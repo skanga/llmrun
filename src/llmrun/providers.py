@@ -106,6 +106,8 @@ class OpenAIProvider:
         *,
         on_delta: Callable[[str], None] | None = None,
     ) -> ProviderResult:
+        if capabilities_for_base_url(self.base_url).prompt_endpoint == "chat":
+            return self._complete_chat_prompt(request, on_delta=on_delta)
         kwargs = _responses_kwargs(request)
         try:
             response = self._client.responses.create(**kwargs)
@@ -114,11 +116,13 @@ class OpenAIProvider:
                 exc
             )
             if should_try_fallback and _chat_vision_fallback_supported(request):
-                return self._complete_chat_vision(request, on_delta=on_delta)
+                return self._complete_chat_prompt(request, on_delta=on_delta)
             if should_try_fallback and _chat_pdf_fallback_supported(request):
-                return self._complete_chat_vision(
+                return self._complete_chat_prompt(
                     _request_with_pdf_pages_as_images(request), on_delta=on_delta
                 )
+            if should_try_fallback and _chat_text_fallback_supported(request):
+                return self._complete_chat_prompt(request, on_delta=on_delta)
             if should_try_fallback and request.attachments:
                 raise ProviderError(
                     "OpenAI-compatible provider request failed: Responses API rejected the request, "
@@ -133,12 +137,21 @@ class OpenAIProvider:
             text=_response_text(response), response_id=getattr(response, "id", None)
         )
 
-    def _complete_chat_vision(
+    def _complete_chat_prompt(
         self,
         request: ProviderRequest,
         *,
         on_delta: Callable[[str], None] | None = None,
     ) -> ProviderResult:
+        if request.attachments and not _chat_vision_fallback_supported(request):
+            if _chat_pdf_fallback_supported(request):
+                return self._complete_chat_prompt(
+                    _request_with_pdf_pages_as_images(request), on_delta=on_delta
+                )
+            raise ProviderError(
+                "OpenAI-compatible chat completions prompt endpoint only supports "
+                "text prompts, image attachments, and local PDFs."
+            )
         kwargs = _chat_completion_kwargs(request)
         try:
             response = self._client.chat.completions.create(**kwargs)
@@ -606,6 +619,10 @@ def _chat_pdf_fallback_supported(request: ProviderRequest) -> bool:
         attachment.kind == "image" or _local_pdf_attachment(attachment)
         for attachment in request.attachments
     )
+
+
+def _chat_text_fallback_supported(request: ProviderRequest) -> bool:
+    return not request.attachments
 
 
 def _responses_unsupported_for_fallback(exc: Exception) -> bool:

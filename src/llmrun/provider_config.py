@@ -19,6 +19,7 @@ class ProviderPreset:
 
 @dataclass(frozen=True)
 class ProviderCapabilities:
+    prompt_endpoint: str = "responses"
     is_groq: bool = False
     speech_default_voice: str | None = None
     speech_voices: tuple[str, ...] = ()
@@ -33,6 +34,7 @@ GROQ_CAPABILITIES = ProviderCapabilities(
     speech_output_suffix=".wav",
     supports_images_endpoint=False,
 )
+NVIDIA_CAPABILITIES = ProviderCapabilities(prompt_endpoint="chat")
 DEFAULT_CAPABILITIES = ProviderCapabilities()
 
 
@@ -49,20 +51,20 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         base_url="https://integrate.api.nvidia.com/v1",
         api_key_env="NVIDIA_API_KEY",
         default_model="openai/gpt-oss-120b",
-        capabilities=DEFAULT_CAPABILITIES,
+        capabilities=NVIDIA_CAPABILITIES,
     ),
     "nvidia-nim": ProviderPreset(
         name="nvidia-nim",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key_env="NVIDIA_API_KEY",
         default_model="openai/gpt-oss-120b",
-        capabilities=DEFAULT_CAPABILITIES,
+        capabilities=NVIDIA_CAPABILITIES,
     ),
     "sambanova": ProviderPreset(
         name="sambanova",
         base_url="https://api.sambanova.ai/v1",
         api_key_env="SAMBANOVA_API_KEY",
-        default_model="DeepSeek-R1",
+        default_model="gpt-oss-120b",
         capabilities=DEFAULT_CAPABILITIES,
     ),
     "cerebras": ProviderPreset(
@@ -76,7 +78,7 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         name="openrouter",
         base_url="https://openrouter.ai/api/v1",
         api_key_env="OPENROUTER_API_KEY",
-        default_model="openai/gpt-5.2",
+        default_model="openai/gpt-oss-120b:free",
         capabilities=DEFAULT_CAPABILITIES,
     ),
     "together": ProviderPreset(

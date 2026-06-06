@@ -156,7 +156,7 @@ llmrun --provider deepinfra "Give me the value of PI to 10 digits"
 llmrun --provider codex "Give me the value of PI to 10 digits"
 ```
 
-`--provider openai` ignores `LLMRUN_BASE_URL` and configured `base_url` unless `--base-url` is also passed. OpenAI-compatible presets set a base URL and provider default model, and prefer the provider-specific API-key environment variable listed above before falling back to `OPENAI_API_KEY`. `--provider codex` uses Codex OAuth and ignores `OPENAI_API_KEY` and base-url settings.
+`--provider openai` ignores `LLMRUN_BASE_URL` and configured `base_url` unless `--base-url` is also passed. OpenAI-compatible presets set a base URL and provider default model, and prefer the provider-specific API-key environment variable listed above before falling back to `OPENAI_API_KEY`. NVIDIA/NIM presets send prompt requests to Chat Completions because NVIDIA exposes those hosted model endpoints at `/v1/chat/completions`. `--provider codex` uses Codex OAuth and ignores `OPENAI_API_KEY` and base-url settings.
 
 Provider preset defaults:
 
@@ -164,9 +164,9 @@ Provider preset defaults:
 | --- | --- | --- |
 | `groq` | `https://api.groq.com/openai/v1` | `meta-llama/llama-4-scout-17b-16e-instruct` |
 | `nvidia`, `nvidia-nim` | `https://integrate.api.nvidia.com/v1` | `openai/gpt-oss-120b` |
-| `sambanova` | `https://api.sambanova.ai/v1` | `DeepSeek-R1` |
+| `sambanova` | `https://api.sambanova.ai/v1` | `gpt-oss-120b` |
 | `cerebras` | `https://api.cerebras.ai/v1` | `gpt-oss-120b` |
-| `openrouter` | `https://openrouter.ai/api/v1` | `openai/gpt-5.2` |
+| `openrouter` | `https://openrouter.ai/api/v1` | `openai/gpt-oss-120b:free` |
 | `together` | `https://api.together.xyz/v1` | `openai/gpt-oss-120b` |
 | `deepinfra` | `https://api.deepinfra.com/v1/openai` | `deepseek-ai/DeepSeek-V3` |
 
@@ -492,7 +492,7 @@ The OpenAI provider is used when an API key is available. It calls:
 client.responses.create(...)
 ```
 
-For OpenAI-compatible providers, set `OPENAI_API_KEY` to the provider key and pass `--base-url`, set `config base_url`, or set `LLMRUN_BASE_URL`. The base URL is passed to the OpenAI SDK client and is not used by the Codex OAuth provider. Use `--provider openai`, an OpenAI-compatible preset such as `groq`, `nvidia-nim`, `sambanova`, `cerebras`, `openrouter`, `together`, or `deepinfra`, or `--provider codex` to override provider selection for one command. Presets set the provider base URL, prefer provider-specific API-key environment variables, and choose a provider-specific prompt default model. Text, audio, image generation, image editing, and video commands use the same configured SDK client when the provider implements those endpoints, and root `--base-url` applies to those subcommands. Image input prompts first try Responses format, then fall back to Chat Completions vision format when a base-url provider rejects Responses. Local PDF file prompts also fall back by rendering pages as images for vision-capable models. Groq supports image recognition/OCR, but not OpenAI-compatible image generation or editing endpoints.
+For OpenAI-compatible providers, set `OPENAI_API_KEY` to the provider key and pass `--base-url`, set `config base_url`, or set `LLMRUN_BASE_URL`. The base URL is passed to the OpenAI SDK client and is not used by the Codex OAuth provider. Use `--provider openai`, an OpenAI-compatible preset such as `groq`, `nvidia`, `nvidia-nim`, `sambanova`, `cerebras`, `openrouter`, `together`, or `deepinfra`, or `--provider codex` to override provider selection for one command. Presets set the provider base URL, prefer provider-specific API-key environment variables, and choose a provider-specific prompt default model. Text, audio, image generation, image editing, and video commands use the same configured SDK client when the provider implements those endpoints, and root `--base-url` applies to those subcommands. Text and image input prompts first try Responses format, then fall back to Chat Completions when a base-url provider rejects Responses with an unsupported or not-found response. NVIDIA/NIM prompt requests use Chat Completions directly. Local PDF file prompts also fall back by rendering pages as images for vision-capable models. Groq supports image recognition/OCR, but not OpenAI-compatible image generation or editing endpoints.
 
 Named sessions store each response id and effective base URL. Official OpenAI sessions without a base URL pass `previous_response_id` on the next turn. Codex OAuth, OpenAI-compatible base-url providers, and sessions continued after a provider/base-url change replay the local transcript instead of sending a stale response id.
 

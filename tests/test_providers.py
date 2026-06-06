@@ -847,6 +847,168 @@ def test_openai_provider_base_url_vision_falls_back_to_chat_completions():
     ]
 
 
+def test_openai_provider_nvidia_base_url_uses_chat_completions_for_text():
+    calls = []
+
+    class Responses:
+        def create(self, **kwargs):
+            raise AssertionError("NVIDIA text prompts should not use Responses")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            message = type("Message", (), {"content": "3.1415926535"})()
+            choice = type("Choice", (), {"message": message})()
+            return type(
+                "ChatResponse", (), {"id": "chat_nvidia", "choices": [choice]}
+            )()
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="nvapi-test"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://integrate.api.nvidia.com/v1",
+    )
+
+    result = provider.complete(
+        ProviderRequest(
+            input="Give me the value of PI to 10 digits",
+            model="moonshotai/kimi-k2.6",
+            stream=False,
+        )
+    )
+
+    assert result.text == "3.1415926535"
+    assert result.response_id == "chat_nvidia"
+    assert calls == [
+        {
+            "model": "moonshotai/kimi-k2.6",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Give me the value of PI to 10 digits",
+                        }
+                    ],
+                }
+            ],
+            "stream": False,
+        }
+    ]
+
+
+def test_openai_provider_nvidia_base_url_streams_chat_text():
+    class Responses:
+        def create(self, **kwargs):
+            raise AssertionError("NVIDIA streaming text should not use Responses")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            assert kwargs["stream"] is True
+            first_delta = type("Delta", (), {"content": "3.14159"})()
+            second_delta = type("Delta", (), {"content": "26535"})()
+            first_choice = type("Choice", (), {"delta": first_delta})()
+            second_choice = type("Choice", (), {"delta": second_delta})()
+            return [
+                type(
+                    "Chunk",
+                    (),
+                    {"id": "chat_nvidia_stream", "choices": [first_choice]},
+                )(),
+                type(
+                    "Chunk",
+                    (),
+                    {"id": "chat_nvidia_stream", "choices": [second_choice]},
+                )(),
+            ]
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="nvapi-test"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://integrate.api.nvidia.com/v1",
+    )
+    chunks = []
+
+    result = provider.complete(
+        ProviderRequest(input="pi", model="openai/gpt-oss-120b", stream=True),
+        on_delta=chunks.append,
+    )
+
+    assert chunks == ["3.14159", "26535"]
+    assert result.text == "3.1415926535"
+    assert result.response_id == "chat_nvidia_stream"
+
+
+def test_openai_provider_base_url_text_falls_back_to_chat_completions_on_404():
+    calls = []
+
+    class ResponseError(Exception):
+        status_code = 404
+
+    class Responses:
+        def create(self, **kwargs):
+            calls.append(("responses", kwargs))
+            raise ResponseError("Error code: 404 - {'detail': 'Not Found'}")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            calls.append(("chat", kwargs))
+            message = type("Message", (), {"content": "Coulomb's law summary"})()
+            choice = type("Choice", (), {"message": message})()
+            return type(
+                "ChatResponse", (), {"id": "chat_inception", "choices": [choice]}
+            )()
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="sk-provider"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://api.inceptionlabs.ai/v1",
+    )
+
+    result = provider.complete(
+        ProviderRequest(
+            input="Explain Coulombs laws",
+            model="mercury-2",
+            stream=False,
+        )
+    )
+
+    assert result.text == "Coulomb's law summary"
+    assert result.response_id == "chat_inception"
+    assert calls[0] == (
+        "responses",
+        {"model": "mercury-2", "input": "Explain Coulombs laws", "stream": False},
+    )
+    assert calls[1] == (
+        "chat",
+        {
+            "model": "mercury-2",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Explain Coulombs laws"},
+                    ],
+                }
+            ],
+            "stream": False,
+        },
+    )
+
+
 def test_openai_provider_base_url_rasterizes_local_pdf_for_chat_fallback(
     monkeypatch, tmp_path
 ):

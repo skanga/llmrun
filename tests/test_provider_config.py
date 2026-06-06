@@ -22,8 +22,9 @@ def test_provider_presets_preserve_existing_values():
         provider_preset("nvidia-nim").base_url == "https://integrate.api.nvidia.com/v1"
     )
     assert provider_preset("sambanova").api_key_env == "SAMBANOVA_API_KEY"
+    assert provider_preset("sambanova").default_model == "gpt-oss-120b"
     assert provider_preset("cerebras").default_model == "gpt-oss-120b"
-    assert provider_preset("openrouter").default_model == "openai/gpt-5.2"
+    assert provider_preset("openrouter").default_model == "openai/gpt-oss-120b:free"
     assert provider_preset("together").api_key_env == "TOGETHER_API_KEY"
     assert (
         provider_preset("deepinfra").base_url == "https://api.deepinfra.com/v1/openai"
@@ -57,10 +58,21 @@ def test_base_url_capabilities_preserve_groq_speech_policy():
     )
 
 
+def test_nvidia_base_url_prefers_chat_completions_for_text_prompts():
+    caps = capabilities_for_base_url("https://integrate.api.nvidia.com/v1/")
+
+    assert caps.prompt_endpoint == "chat"
+    assert (
+        default_model_for_base_url("https://integrate.api.nvidia.com/v1/")
+        == "openai/gpt-oss-120b"
+    )
+
+
 def test_unknown_base_url_has_openai_like_capabilities():
     caps = capabilities_for_base_url("https://provider.test/v1")
 
     assert caps.is_groq is False
+    assert caps.prompt_endpoint == "responses"
     assert caps.speech_default_voice is None
     assert caps.speech_voices == ()
     assert caps.speech_output_suffix is None

@@ -436,14 +436,14 @@ def test_cli_provider_groq_missing_key_mentions_groq_api_key(monkeypatch, tmp_pa
             "sambanova",
             "SAMBANOVA_API_KEY",
             "https://api.sambanova.ai/v1",
-            "DeepSeek-R1",
+            "gpt-oss-120b",
         ),
         ("cerebras", "CEREBRAS_API_KEY", "https://api.cerebras.ai/v1", "gpt-oss-120b"),
         (
             "openrouter",
             "OPENROUTER_API_KEY",
             "https://openrouter.ai/api/v1",
-            "openai/gpt-5.2",
+            "openai/gpt-oss-120b:free",
         ),
         (
             "together",
