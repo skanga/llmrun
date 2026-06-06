@@ -22,23 +22,32 @@ The primary provider uses OpenAI's Responses API. A secondary Codex OAuth provid
 
 From this repository:
 
-```powershell
+```console
 python -m pip install -e .
 ```
 
 For development dependencies:
 
-```powershell
+```console
 python -m pip install -e ".[dev]"
 ```
 
 After installation, the `llmrun` command is available:
 
-```powershell
+```console
 llmrun --help
 ```
 
 You can also run the module directly from a source checkout:
+
+macOS/Linux:
+
+```sh
+export PYTHONPATH=src
+python -m llmrun.cli --help
+```
+
+Windows PowerShell:
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -63,6 +72,12 @@ On Windows this is usually:
 
 ```text
 %USERPROFILE%\.codex\auth.json
+```
+
+On macOS and Linux this is usually:
+
+```text
+~/.codex/auth.json
 ```
 
 Supported auth and state environment variables:
@@ -91,11 +106,19 @@ Secrets are not printed by the CLI or included in error messages.
 
 Run a prompt:
 
-```powershell
+```console
 llmrun "Explain Python decorators in three bullets"
 ```
 
 Read the prompt from stdin:
+
+macOS/Linux:
+
+```sh
+cat notes.txt | llmrun -
+```
+
+Windows PowerShell:
 
 ```powershell
 Get-Content .\notes.txt | llmrun -
@@ -103,25 +126,25 @@ Get-Content .\notes.txt | llmrun -
 
 Use a system instruction:
 
-```powershell
+```console
 llmrun --system "You are a pirate." "Why is the sky blue?"
 ```
 
 Use a specific model:
 
-```powershell
+```console
 llmrun --model gpt-5.4-mini "Write a regex for ISO dates"
 ```
 
 Use an OpenAI-compatible provider:
 
-```powershell
+```console
 llmrun --base-url https://provider.example/v1 --model provider-model "Explain Coulombs laws"
 ```
 
 Choose a provider for one command:
 
-```powershell
+```console
 llmrun --provider openai "Give me the value of PI to 10 digits"
 llmrun --provider groq "Give me the value of PI to 10 digits"
 llmrun --provider nvidia "Give me the value of PI to 10 digits"
@@ -149,6 +172,18 @@ Provider preset defaults:
 
 For example, with Groq:
 
+macOS/Linux:
+
+```sh
+export OPENAI_API_KEY="gsk_..."
+export LLMRUN_BASE_URL="https://api.groq.com/openai/v1"
+llmrun --model openai/gpt-oss-120b "Explain Coulombs law"
+llmrun --image receipt.webp --model meta-llama/llama-4-scout-17b-16e-instruct "Extract the text"
+llmrun --provider groq --file report.pdf "Summarize the action items"
+```
+
+Windows PowerShell:
+
 ```powershell
 $env:OPENAI_API_KEY = "gsk_..."
 $env:LLMRUN_BASE_URL = "https://api.groq.com/openai/v1"
@@ -161,19 +196,19 @@ When the configured base URL is Groq and no prompt model is set, `llmrun` defaul
 
 Disable streaming:
 
-```powershell
+```console
 llmrun --no-stream "Give me a summary Shakespeares Merchant of Venice in 1 page"
 ```
 
 Ask for JSON output:
 
-```powershell
+```console
 llmrun --json "Return a prettified JSON object with name, risks, and next_steps"
 ```
 
 Attach an image or file to a normal prompt:
 
-```powershell
+```console
 llmrun --image screenshot.png "Describe what you see"
 llmrun --file report.pdf "Summarize the action items"
 llmrun --image https://example.com/screenshot.png "What is visible here?"
@@ -185,19 +220,19 @@ Local attachments are sent as base64 data URLs. HTTPS URLs are passed through wi
 
 Audio transcription prints text to stdout:
 
-```powershell
+```console
 llmrun --provider groq audio transcribe meeting.wav
 ```
 
 Audio translation prints English text to stdout:
 
-```powershell
+```console
 llmrun --provider groq audio translate french.mp3
 ```
 
 Speech generation writes an audio file:
 
-```powershell
+```console
 llmrun --provider groq audio speech "Build complete" --voice troy --output done.wav
 ```
 
@@ -205,8 +240,8 @@ OpenAI defaults are `gpt-4o-transcribe` for transcription, `whisper-1` for trans
 
 Image generation and editing write image files:
 
-```powershell
-llmrun images generate "A compact architecture diagram" --output .\diagram.png
+```console
+llmrun images generate "A compact architecture diagram" --output diagram.png
 llmrun images generate "Generate a logo direction for an ice cream brand" --count 3 --output logo.png
 llmrun images edit --image diagram.png "Use blue labels" --output diagram-edited.png
 ```
@@ -215,7 +250,7 @@ The image default model is `gpt-image-1`; override it with `--model` or `llmrun 
 
 Video generation submits a Sora render job, polls until completion, then downloads the MP4:
 
-```powershell
+```console
 llmrun videos generate "A short product demo" --model sora-2-pro --output demo.mp4
 llmrun videos generate "Animate this first frame" --model sora-2 --image frame.png --seconds 8 --size 1280x720 --output demo.mp4
 ```
@@ -231,81 +266,81 @@ Named sessions store the provider, model, effective base URL, latest response id
 
 Start or continue a session:
 
-```powershell
+```console
 llmrun --session work "Draft a plan for a Hello World app in Java"
 llmrun --session work "Now turn that into a checklist"
 ```
 
 Start an interactive chat loop:
 
-```powershell
+```console
 llmrun chat --session work
 ```
 
-Exit chat with `exit`, `quit`, or Ctrl+Z.
+Exit chat with `exit`, `quit`, Ctrl+D on macOS/Linux, or Ctrl+Z followed by Enter on Windows.
 
 List sessions:
 
-```powershell
+```console
 llmrun sessions list
 ```
 
 Show a session as Markdown:
 
-```powershell
+```console
 llmrun sessions show work
 ```
 
 Export a transcript:
 
-```powershell
+```console
 llmrun sessions export work --format markdown
 llmrun sessions export work --format json
 ```
 
 Delete a session:
 
-```powershell
+```console
 llmrun sessions delete work
 ```
 
 ## Templates
 
-Templates are saved prompt text with `{prompt}` substitution. `$prompt` is also supported for compatibility, but `{prompt}` is safer in Windows shells because `$prompt` can be expanded before `llmrun` receives it.
+Templates are saved prompt text with `{prompt}` substitution. `$prompt` is also supported for compatibility, but `{prompt}` is safer because many shells can expand `$prompt` before `llmrun` receives it.
 
 Add a template:
 
-```powershell
+```console
 llmrun templates add bug "Find the likely bug in this code: {prompt}"
 ```
 
 List templates:
 
-```powershell
+```console
 llmrun templates list
 ```
 
 Show a template:
 
-```powershell
+```console
 llmrun templates show bug
 ```
 
 Delete a template:
 
-```powershell
+```console
 llmrun templates delete bug
 ```
 
 Run a template:
 
-```powershell
+```console
 llmrun templates run bug "function returns None for valid input"
 ```
 
 Run a template in a session:
 
-```powershell
+```console
 llmrun templates run bug "crashes during import" --session work
 ```
 
@@ -315,26 +350,26 @@ Fragments are reusable instruction snippets. They are appended to the system ins
 
 Add a fragment:
 
-```powershell
+```console
 llmrun fragments add terse "Be concise. Prefer concrete recommendations."
 llmrun fragments add security "Flag any potential security issues"
 ```
 
 Use a fragment:
 
-```powershell
+```console
 llmrun --fragment terse "Review this README"
 ```
 
 Use multiple fragments:
 
-```powershell
+```console
 llmrun --fragment terse --fragment security "Review this auth code"
 ```
 
 List, show, or delete fragments:
 
-```powershell
+```console
 llmrun fragments list
 llmrun fragments show terse
 llmrun fragments delete terse
@@ -349,26 +384,26 @@ The built-in default model is `gpt-5.4-mini`. It is intentionally shared by the 
 
 Set the default model:
 
-```powershell
+```console
 llmrun config set default_model gpt-5.4-mini
 ```
 
 Set a base URL for an OpenAI-compatible provider:
 
-```powershell
+```console
 llmrun config set base_url https://provider.example/v1
 llmrun config set default_model provider-model
 ```
 
 Read a config value:
 
-```powershell
+```console
 llmrun config get default_model
 ```
 
 Remove a config value:
 
-```powershell
+```console
 llmrun config unset default_model
 ```
 
@@ -420,9 +455,17 @@ Windows: C:\Users\<Username>\AppData\Local\llmrun
 macOS: /Users/<Username>/Library/Application Support/llmrun
 Linux: /home/<Username>/.local/share/llmrun (adhering to the XDG Base Directory Specification)
 ```
-The implementation calls `platformdirs.user_data_dir("llmrun", appauthor=False)` so we do not create a duplicated `llmrun\llmrun` path.
+The implementation calls `platformdirs.user_data_dir("llmrun", appauthor=False)` so Windows does not create a duplicated `llmrun\llmrun` path.
 
 You can also set `LLMRUN_STATE_DIR` to use a specific directory like this:
+
+macOS/Linux:
+
+```sh
+export LLMRUN_STATE_DIR=/tmp/llmrun-state
+```
+
+Windows PowerShell:
 
 ```powershell
 $env:LLMRUN_STATE_DIR = "C:\tmp\llmrun-state"
@@ -480,13 +523,13 @@ Current limitations:
 
 Run tests:
 
-```powershell
+```console
 pytest
 ```
 
 Run formatting, lint, and type checks:
 
-```powershell
+```console
 python -m ruff check src tests
 python -m black --check src tests
 python -m mypy src tests
@@ -494,12 +537,21 @@ python -m mypy src tests
 
 Measure test coverage:
 
-```powershell
-python -m coverage run --source=src\llmrun -m pytest
+```console
+python -m coverage run --source=src/llmrun -m pytest
 python -m coverage report
 ```
 
-In restricted Windows sandboxes where the default temp directory is not writable, point pytest at a workspace-local temp directory:
+In restricted sandboxes where the default temp directory is not writable, point pytest at a workspace-local temp directory.
+
+macOS/Linux:
+
+```sh
+mkdir -p .pytest-runtime
+TMPDIR="$(pwd)/.pytest-runtime" pytest --basetemp .pytest-runtime/basetemp
+```
+
+Windows PowerShell:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path .pytest-runtime
