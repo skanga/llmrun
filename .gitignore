@@ -38,6 +38,13 @@ env/
 *.mp4
 *.pdf
 
+# README example input fixtures
+!receipt.webp
+!report.pdf
+!screenshot.png
+!meeting.wav
+!french.mp3
+
 # Editor and OS noise
 .vscode/
 .idea/
