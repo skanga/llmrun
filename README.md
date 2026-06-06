@@ -429,14 +429,14 @@ These options apply to root prompts:
 
 | Option | Description |
 | --- | --- |
-| `-S, --system TEXT` | System instruction text. |
+| `-p, --provider NAME` | Provider preset or auth mode for one command. |
 | `-m, --model TEXT` | Model override for this request. |
 | `-b, --base-url URL` | Base URL for OpenAI-compatible providers when using API-key auth. |
-| `-p, --provider NAME` | Provider preset or auth mode for one command. |
+| `-S, --system TEXT` | System instruction text. |
 | `-s, --session NAME` | Continue or create a named session. |
-| `--fragment NAME` | Add a stored fragment. Can be repeated. |
 | `-i, --image PATH_OR_URL` | Attach an image to a root prompt. Can be repeated. |
 | `-f, --file PATH_OR_URL` | Attach a file to a root prompt. Can be repeated. |
+| `--fragment NAME` | Add a stored fragment. Can be repeated. |
 | `--image-detail auto\|low\|high` | Detail level for attached images. `auto` lets the provider choose, `low` uses less visual detail, and `high` requests more detailed image analysis. Defaults to `auto`. |
 | `-t, --temperature FLOAT` | Sampling temperature passed to the provider. |
 | `--max-output-tokens INTEGER` | Maximum output tokens passed when supported. The Codex OAuth backend currently rejects this field, so that adapter strips it. |
