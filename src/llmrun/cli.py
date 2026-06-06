@@ -111,7 +111,6 @@ class PromptGroup(click.Group):
     help="Sampling temperature for models that support it.",
 )
 @click.option(
-    "-n",
     "--max-output-tokens",
     type=int,
     help="Maximum output tokens requested from the model.",
@@ -260,7 +259,6 @@ def sessions_delete(name: str) -> None:
 @sessions.command("export", help="Export a session transcript.")
 @click.argument("name")
 @click.option(
-    "-f",
     "--format",
     "format_",
     default="markdown",
@@ -491,7 +489,7 @@ def images() -> None:
     help="Output file path. Multiple images use numbered variants.",
 )
 @click.option(
-    "-n",
+    "-c",
     "--count",
     type=click.IntRange(1, 10),
     default=1,

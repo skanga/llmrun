@@ -437,14 +437,14 @@ These options apply to root prompts:
 | `--fragment NAME` | Add a stored fragment. Can be repeated. |
 | `-i, --image PATH_OR_URL` | Attach an image to a root prompt. Can be repeated. |
 | `-f, --file PATH_OR_URL` | Attach a file to a root prompt. Can be repeated. |
-| `--image-detail auto|low|high` | Detail level for attached images. Defaults to `auto`. |
+| `--image-detail auto\|low\|high` | Detail level for attached images. `auto` lets the provider choose, `low` uses less visual detail, and `high` requests more detailed image analysis. Defaults to `auto`. |
 | `-t, --temperature FLOAT` | Sampling temperature passed to the provider. |
-| `-n, --max-output-tokens INTEGER` | Maximum output tokens passed when supported. The Codex OAuth backend currently rejects this field, so that adapter strips it. |
+| `--max-output-tokens INTEGER` | Maximum output tokens passed when supported. The Codex OAuth backend currently rejects this field, so that adapter strips it. |
 | `--reasoning-effort TEXT` | Reasoning effort value passed as `reasoning.effort`. |
 | `--stream / --no-stream` | Stream output when supported. Streaming is on by default. |
 | `-j, --json` | Request JSON-object output mode. |
 
-Common subcommand aliases include `-o, --output` for generated file paths, `-m, --model` for model selection, `-i, --image` for image inputs, `-v, --voice` for speech voices, and `-n, --count` for image counts.
+Common subcommand aliases include `-o, --output` for generated file paths, `-m, --model` for model selection, `-i, --image` for image inputs, `-v, --voice` for speech voices, and `-c, --count` for image counts.
 
 ## State Files
 

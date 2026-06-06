@@ -251,6 +251,19 @@ def test_cli_config_templates_fragments_and_export(monkeypatch, tmp_path):
     assert json.loads(exported.stdout)["name"] == "work"
 
 
+def test_cli_sessions_export_format_is_long_only(monkeypatch, tmp_path):
+    monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path))
+
+    help_result = runner.invoke(app, ["sessions", "export", "-h"])
+    short_result = runner.invoke(app, ["sessions", "export", "work", "-f", "json"])
+
+    assert help_result.exit_code == 0
+    assert "--format TEXT" in help_result.stdout
+    assert "-f, --format" not in help_result.stdout
+    assert short_result.exit_code != 0
+    assert "No such option: -f" in short_result.stderr
+
+
 def test_cli_state_commands_cover_show_list_delete_and_errors(monkeypatch, tmp_path):
     monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path))
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
@@ -677,6 +690,8 @@ def test_cli_help_explains_common_root_options():
     assert "Attach an image path or HTTPS URL. Repeat" in result.stdout
     assert "-f, --file TEXT" in result.stdout
     assert "Attach a file path or HTTPS URL. Repeat" in result.stdout
+    assert "--max-output-tokens INTEGER" in result.stdout
+    assert "-n, --max-output-tokens" not in result.stdout
     assert "Transcribe, translate, or synthesize audio." in result.stdout
 
 
@@ -724,7 +739,7 @@ def test_cli_common_short_options_route_to_prompt(monkeypatch, tmp_path):
             str(file),
             "-t",
             "0.2",
-            "-n",
+            "--max-output-tokens",
             "128",
             "-j",
             "hello",
@@ -741,6 +756,16 @@ def test_cli_common_short_options_route_to_prompt(monkeypatch, tmp_path):
             [("image", str(image)), ("file", str(file))],
         )
     ]
+
+
+def test_cli_root_n_short_option_is_not_used_for_tokens(monkeypatch, tmp_path):
+    monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    result = runner.invoke(app, ["-n", "128", "hello"])
+
+    assert result.exit_code != 0
+    assert "No such option: -n" in result.stderr
 
 
 def test_cli_streaming_not_implemented_retry_prints_once(monkeypatch, tmp_path):

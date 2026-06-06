@@ -415,7 +415,8 @@ def test_images_generate_help_and_short_options(monkeypatch, tmp_path):
 
     assert help_result.exit_code == 0
     assert "-o, --output TEXT" in help_result.stdout
-    assert "-n, --count INTEGER RANGE" in help_result.stdout
+    assert "-c, --count INTEGER RANGE" in help_result.stdout
+    assert "-n, --count" not in help_result.stdout
     assert "Number of images to generate." in help_result.stdout
 
     monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path / "state"))
@@ -443,13 +444,34 @@ def test_images_generate_help_and_short_options(monkeypatch, tmp_path):
             "image-test",
             "-o",
             str(output),
-            "-n",
+            "-c",
             "2",
         ],
     )
 
     assert result.exit_code == 0
     assert seen == [("image-test", str(output), 2)]
+
+
+def test_images_generate_rejects_n_short_option_for_count(monkeypatch, tmp_path):
+    monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    result = runner.invoke(
+        app,
+        [
+            "images",
+            "generate",
+            "draw",
+            "--output",
+            str(tmp_path / "image.png"),
+            "-n",
+            "2",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "No such option: -n" in result.stderr
 
 
 def test_images_generate_provider_codex_overrides_openai_key(monkeypatch, tmp_path):
