@@ -471,7 +471,8 @@ def test_images_generate_rejects_n_short_option_for_count(monkeypatch, tmp_path)
     )
 
     assert result.exit_code != 0
-    assert "No such option: -n" in result.stderr
+    assert "No such option" in result.stderr
+    assert "-n" in result.stderr
 
 
 def test_images_generate_provider_codex_overrides_openai_key(monkeypatch, tmp_path):

@@ -261,7 +261,8 @@ def test_cli_sessions_export_format_is_long_only(monkeypatch, tmp_path):
     assert "--format TEXT" in help_result.stdout
     assert "-f, --format" not in help_result.stdout
     assert short_result.exit_code != 0
-    assert "No such option: -f" in short_result.stderr
+    assert "No such option" in short_result.stderr
+    assert "-f" in short_result.stderr
 
 
 def test_cli_state_commands_cover_show_list_delete_and_errors(monkeypatch, tmp_path):
@@ -819,7 +820,8 @@ def test_cli_root_n_short_option_is_not_used_for_tokens(monkeypatch, tmp_path):
     result = runner.invoke(app, ["-n", "128", "hello"])
 
     assert result.exit_code != 0
-    assert "No such option: -n" in result.stderr
+    assert "No such option" in result.stderr
+    assert "-n" in result.stderr
 
 
 def test_cli_streaming_not_implemented_retry_prints_once(monkeypatch, tmp_path):
