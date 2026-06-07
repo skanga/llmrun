@@ -1,0 +1,103 @@
+name: Release artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  pyinstaller:
+    name: PyInstaller (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            executable: llmrun-windows-x64.exe
+            package: llmrun-windows-x64.zip
+          - name: linux-x64
+            os: ubuntu-22.04
+            executable: llmrun-linux-x64
+            package: llmrun-linux-x64.tar.gz
+          - name: linux-arm64
+            os: ubuntu-22.04-arm
+            executable: llmrun-linux-arm64
+            package: llmrun-linux-arm64.tar.gz
+          - name: macos-x64
+            os: macos-15-intel
+            executable: llmrun-macos-x64
+            package: llmrun-macos-x64.tar.gz
+          - name: macos-arm64
+            os: macos-15
+            executable: llmrun-macos-arm64
+            package: llmrun-macos-arm64.tar.gz
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install release tooling
+        run: python -m pip install -e ".[release,dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build executable
+        run: llmrun release pyinstaller --output dist/${{ matrix.executable }}
+
+      - name: Ensure Unix executable bit
+        if: runner.os != 'Windows'
+        run: chmod +x dist/${{ matrix.executable }}
+
+      - name: Smoke test executable
+        run: ./dist/${{ matrix.executable }} --help
+        shell: bash
+
+      - name: Package Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -LiteralPath "dist/${{ matrix.executable }}" -DestinationPath "dist/${{ matrix.package }}" -Force
+
+      - name: Package Unix executable
+        if: runner.os != 'Windows'
+        run: tar -czf dist/${{ matrix.package }} -C dist ${{ matrix.executable }}
+
+      - name: Upload packaged executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: dist/${{ matrix.package }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    needs: pyinstaller
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-dist
+          merge-multiple: true
+
+      - name: Upload GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-dist/*
+          fail_on_unmatched_files: true

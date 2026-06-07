@@ -877,6 +877,7 @@ def test_openai_provider_nvidia_base_url_uses_chat_completions_for_text():
         ProviderRequest(
             input="Give me the value of PI to 10 digits",
             model="moonshotai/kimi-k2.6",
+            reasoning_effort="low",
             stream=False,
         )
     )
@@ -889,14 +890,10 @@ def test_openai_provider_nvidia_base_url_uses_chat_completions_for_text():
             "messages": [
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Give me the value of PI to 10 digits",
-                        }
-                    ],
+                    "content": "Give me the value of PI to 10 digits",
                 }
             ],
+            "reasoning_effort": "low",
             "stream": False,
         }
     ]
@@ -910,21 +907,12 @@ def test_openai_provider_nvidia_base_url_streams_chat_text():
     class ChatCompletions:
         def create(self, **kwargs):
             assert kwargs["stream"] is True
-            first_delta = type("Delta", (), {"content": "3.14159"})()
-            second_delta = type("Delta", (), {"content": "26535"})()
-            first_choice = type("Choice", (), {"delta": first_delta})()
-            second_choice = type("Choice", (), {"delta": second_delta})()
             return [
-                type(
-                    "Chunk",
-                    (),
-                    {"id": "chat_nvidia_stream", "choices": [first_choice]},
-                )(),
-                type(
-                    "Chunk",
-                    (),
-                    {"id": "chat_nvidia_stream", "choices": [second_choice]},
-                )(),
+                {
+                    "id": "chat_nvidia_stream",
+                    "choices": [{"delta": {"content": "3.14159"}}],
+                },
+                {"choices": [{"message": {"content": "26535"}}]},
             ]
 
     class Client:
@@ -946,6 +934,72 @@ def test_openai_provider_nvidia_base_url_streams_chat_text():
     assert chunks == ["3.14159", "26535"]
     assert result.text == "3.1415926535"
     assert result.response_id == "chat_nvidia_stream"
+
+
+def test_openai_provider_chat_stream_reads_object_chunks():
+    class Responses:
+        def create(self, **kwargs):
+            raise AssertionError("NVIDIA streaming text should not use Responses")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            first_delta = type("Delta", (), {"content": "3.14159"})()
+            second_message = type("Message", (), {"content": "26535"})()
+            first_choice = type("Choice", (), {"delta": first_delta})()
+            second_choice = type("Choice", (), {"message": second_message})()
+            return [
+                type(
+                    "Chunk",
+                    (),
+                    {"id": "chat_object_stream", "choices": [first_choice]},
+                )(),
+                type("Chunk", (), {"choices": [second_choice]})(),
+            ]
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="nvapi-test"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://integrate.api.nvidia.com/v1",
+    )
+
+    result = provider.complete(
+        ProviderRequest(input="pi", model="openai/gpt-oss-120b", stream=True)
+    )
+
+    assert result.text == "3.1415926535"
+    assert result.response_id == "chat_object_stream"
+
+
+def test_openai_provider_chat_stream_raises_when_no_text():
+    class Responses:
+        def create(self, **kwargs):
+            raise AssertionError("NVIDIA streaming text should not use Responses")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            return [
+                {"id": "chat_empty", "choices": [{"delta": {}}]},
+                {"id": "chat_empty", "choices": [{"message": {"content": ""}}]},
+            ]
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="nvapi-test"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://integrate.api.nvidia.com/v1",
+    )
+
+    with pytest.raises(ProviderError, match="chat completions stream returned no text"):
+        provider.complete(
+            ProviderRequest(input="pi", model="openai/gpt-oss-120b", stream=True)
+        )
 
 
 def test_openai_provider_base_url_text_falls_back_to_chat_completions_on_404():
@@ -999,14 +1053,40 @@ def test_openai_provider_base_url_text_falls_back_to_chat_completions_on_404():
             "messages": [
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Explain Coulombs laws"},
-                    ],
+                    "content": "Explain Coulombs laws",
                 }
             ],
             "stream": False,
         },
     )
+
+
+def test_openai_provider_base_url_does_not_fallback_for_plain_400_text_error():
+    class ResponseError(Exception):
+        status_code = 400
+
+    class Responses:
+        def create(self, **kwargs):
+            raise ResponseError("invalid model or payload")
+
+    class ChatCompletions:
+        def create(self, **kwargs):
+            raise AssertionError("plain 400 failures should not use chat fallback")
+
+    class Client:
+        responses = Responses()
+        chat = type("Chat", (), {"completions": ChatCompletions()})()
+
+    provider = OpenAIProvider(
+        AuthInfo(provider="openai", api_key="sk-provider"),
+        client_factory=lambda api_key, base_url=None: Client(),
+        base_url="https://api.inceptionlabs.ai/v1",
+    )
+
+    with pytest.raises(ProviderError) as exc:
+        provider.complete(ProviderRequest(input="hi", model="bad-model"))
+
+    assert "invalid model or payload" in str(exc.value)
 
 
 def test_openai_provider_base_url_rasterizes_local_pdf_for_chat_fallback(

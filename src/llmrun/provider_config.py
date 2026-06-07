@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-GROQ_DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_DEFAULT_MODEL = "openai/gpt-oss-120b"
+GROQ_VISION_DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_SPEECH_DEFAULT_VOICE = "troy"
 GROQ_SPEECH_VOICES = ("autumn", "diana", "hannah", "austin", "daniel", "troy")
@@ -15,6 +16,7 @@ class ProviderPreset:
     api_key_env: str
     default_model: str
     capabilities: "ProviderCapabilities"
+    vision_default_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,7 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         api_key_env="GROQ_API_KEY",
         default_model=GROQ_DEFAULT_MODEL,
         capabilities=GROQ_CAPABILITIES,
+        vision_default_model=GROQ_VISION_DEFAULT_MODEL,
     ),
     "nvidia": ProviderPreset(
         name="nvidia",
@@ -133,8 +136,12 @@ def preset_for_base_url(base_url: str | None) -> ProviderPreset | None:
     return None
 
 
-def default_model_for_base_url(base_url: str | None) -> str | None:
+def default_model_for_base_url(
+    base_url: str | None, *, vision: bool = False
+) -> str | None:
     preset = preset_for_base_url(base_url)
+    if preset and vision and preset.vision_default_model:
+        return preset.vision_default_model
     return preset.default_model if preset else None
 
 

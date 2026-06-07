@@ -94,6 +94,7 @@ class PromptRunner:
             existing_model=existing.model if existing else None,
             store=self.store,
             base_url=chosen_base_url,
+            has_vision_input=has_vision_input(attachments),
         )
         provider_name = getattr(provider, "name", auth.provider)
         request_input = assembled.input
@@ -449,14 +450,27 @@ def prompt_model_default(
     existing_model: str | None,
     store: StateStore,
     base_url: str | None,
+    has_vision_input: bool = False,
 ) -> str:
     configured_model = store.get_config("default_model")
     if model or existing_model or configured_model:
         return model or existing_model or configured_model or DEFAULT_MODEL
-    provider_default = default_model_for_base_url(base_url)
+    provider_default = default_model_for_base_url(base_url, vision=has_vision_input)
     if provider_default:
         return provider_default
     return DEFAULT_MODEL
+
+
+def has_vision_input(attachments: list[Any]) -> bool:
+    return any(
+        attachment.kind == "image"
+        or (
+            attachment.kind == "file"
+            and attachment.mime_type == "application/pdf"
+            and Path(attachment.source).is_file()
+        )
+        for attachment in attachments
+    )
 
 
 def load_auth_for_provider(provider_choice: str | None) -> AuthInfo:

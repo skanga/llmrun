@@ -1,6 +1,7 @@
 from llmrun.provider_config import (
     GROQ_BASE_URL,
     GROQ_DEFAULT_MODEL,
+    GROQ_VISION_DEFAULT_MODEL,
     GROQ_SPEECH_DEFAULT_VOICE,
     GROQ_SPEECH_VOICES,
     OPENAI_COMPATIBLE_PROVIDER_PRESETS,
@@ -15,6 +16,7 @@ def test_provider_presets_preserve_existing_values():
     assert provider_preset("groq").base_url == GROQ_BASE_URL
     assert provider_preset("groq").api_key_env == "GROQ_API_KEY"
     assert provider_preset("groq").default_model == GROQ_DEFAULT_MODEL
+    assert provider_preset("groq").vision_default_model == GROQ_VISION_DEFAULT_MODEL
     assert provider_preset("nvidia").base_url == "https://integrate.api.nvidia.com/v1"
     assert provider_preset("nvidia").api_key_env == "NVIDIA_API_KEY"
     assert provider_preset("nvidia").default_model == "openai/gpt-oss-120b"
@@ -51,6 +53,12 @@ def test_base_url_capabilities_preserve_groq_speech_policy():
     assert (
         default_model_for_base_url("https://api.groq.com/openai/v1/")
         == GROQ_DEFAULT_MODEL
+    )
+    assert (
+        default_model_for_base_url(
+            "https://api.groq.com/openai/v1/", vision=True
+        )
+        == GROQ_VISION_DEFAULT_MODEL
     )
     assert (
         default_model_for_base_url("https://gateway.api.groq.com/custom")

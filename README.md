@@ -26,10 +26,22 @@ From this repository:
 python -m pip install -e .
 ```
 
+Local PDF rendering is optional. Install the `pdf` extra only when you want local PDF attachments to fall back through image rendering for Chat Completions providers:
+
+```console
+python -m pip install -e ".[pdf]"
+```
+
 For development dependencies:
 
 ```console
 python -m pip install -e ".[dev]"
+```
+
+For release artifact tooling:
+
+```console
+python -m pip install -e ".[release]"
 ```
 
 After installation, the `llmrun` command is available:
@@ -56,11 +68,13 @@ python -m llmrun.cli --help
 
 ## Authentication
 
-`llmrun` resolves auth in this order:
+Without a provider preset, `llmrun` resolves auth in this order:
 
 1. `OPENAI_API_KEY`
 2. `OPENAI_API_KEY` inside Codex `auth.json`
 3. Codex OAuth tokens inside Codex `auth.json`
+
+With an OpenAI-compatible provider preset, such as `--provider groq` or `--provider nvidia`, `llmrun` first checks that provider's API-key environment variable, then falls back to `OPENAI_API_KEY` or `OPENAI_API_KEY` inside Codex `auth.json`.
 
 The default Codex auth file is:
 
@@ -84,14 +98,14 @@ Supported auth and state environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | Use the official OpenAI provider. Highest priority. |
-| `GROQ_API_KEY` | API key used by `--provider groq` when `OPENAI_API_KEY` is not set. |
-| `NVIDIA_API_KEY` | API key used by `--provider nvidia` or `--provider nvidia-nim` when `OPENAI_API_KEY` is not set. |
-| `SAMBANOVA_API_KEY` | API key used by `--provider sambanova` when `OPENAI_API_KEY` is not set. |
-| `CEREBRAS_API_KEY` | API key used by `--provider cerebras` when `OPENAI_API_KEY` is not set. |
-| `OPENROUTER_API_KEY` | API key used by `--provider openrouter` when `OPENAI_API_KEY` is not set. |
-| `TOGETHER_API_KEY` | API key used by `--provider together` when `OPENAI_API_KEY` is not set. |
-| `DEEPINFRA_API_KEY` | API key used by `--provider deepinfra` when `OPENAI_API_KEY` is not set. |
+| `OPENAI_API_KEY` | Use the official OpenAI provider; provider presets fall back to this key when their provider-specific key is unset. |
+| `GROQ_API_KEY` | Preferred API key for `--provider groq`; falls back to `OPENAI_API_KEY` when unset. |
+| `NVIDIA_API_KEY` | Preferred API key for `--provider nvidia` or `--provider nvidia-nim`; falls back to `OPENAI_API_KEY` when unset. |
+| `SAMBANOVA_API_KEY` | Preferred API key for `--provider sambanova`; falls back to `OPENAI_API_KEY` when unset. |
+| `CEREBRAS_API_KEY` | Preferred API key for `--provider cerebras`; falls back to `OPENAI_API_KEY` when unset. |
+| `OPENROUTER_API_KEY` | Preferred API key for `--provider openrouter`; falls back to `OPENAI_API_KEY` when unset. |
+| `TOGETHER_API_KEY` | Preferred API key for `--provider together`; falls back to `OPENAI_API_KEY` when unset. |
+| `DEEPINFRA_API_KEY` | Preferred API key for `--provider deepinfra`; falls back to `OPENAI_API_KEY` when unset. |
 | `CODEX_HOME` | Directory containing `auth.json`; defaults to `~/.codex`. |
 | `CODEX_AUTH_JSON_PATH` | Explicit path to Codex `auth.json`. |
 | `LLMRUN_PROVIDER` | Force `openai` or `codex` when compatible with available auth. |
@@ -162,7 +176,7 @@ Provider preset defaults:
 
 | Provider | Base URL | Default model |
 | --- | --- | --- |
-| `groq` | `https://api.groq.com/openai/v1` | `meta-llama/llama-4-scout-17b-16e-instruct` |
+| `groq` | `https://api.groq.com/openai/v1` | Text: `openai/gpt-oss-120b`; image/OCR: `meta-llama/llama-4-scout-17b-16e-instruct` |
 | `nvidia`, `nvidia-nim` | `https://integrate.api.nvidia.com/v1` | `openai/gpt-oss-120b` |
 | `sambanova` | `https://api.sambanova.ai/v1` | `gpt-oss-120b` |
 | `cerebras` | `https://api.cerebras.ai/v1` | `gpt-oss-120b` |
@@ -177,8 +191,8 @@ macOS/Linux:
 ```sh
 export OPENAI_API_KEY="gsk_..."
 export LLMRUN_BASE_URL="https://api.groq.com/openai/v1"
-llmrun --model openai/gpt-oss-120b "Explain Coulombs law"
-llmrun --image receipt.webp --model meta-llama/llama-4-scout-17b-16e-instruct "Extract the text"
+llmrun "Explain Coulombs law"
+llmrun --image receipt.webp "Extract the text"
 llmrun --provider groq --file report.pdf "Summarize the action items"
 ```
 
@@ -187,12 +201,12 @@ Windows PowerShell:
 ```powershell
 $env:OPENAI_API_KEY = "gsk_..."
 $env:LLMRUN_BASE_URL = "https://api.groq.com/openai/v1"
-llmrun --model openai/gpt-oss-120b "Explain Coulombs law"
-llmrun --image receipt.webp --model meta-llama/llama-4-scout-17b-16e-instruct "Extract the text"
+llmrun "Explain Coulombs law"
+llmrun --image receipt.webp "Extract the text"
 llmrun --provider groq --file report.pdf "Summarize the action items"
 ```
 
-When the configured base URL is Groq and no prompt model is set, `llmrun` defaults prompt requests to `meta-llama/llama-4-scout-17b-16e-instruct`. Pass `--model` or set `config default_model` to use a different Groq model. Groq supports image recognition/OCR through prompt image inputs, but it does not expose OpenAI-compatible image generation or image editing endpoints.
+When the configured base URL is Groq and no prompt model is set, `llmrun` defaults text prompts to `openai/gpt-oss-120b` and image or local PDF OCR prompts to `meta-llama/llama-4-scout-17b-16e-instruct`. Pass `--model` or set `config default_model` to use a different Groq model. Groq supports image recognition/OCR through prompt image inputs, but it does not expose OpenAI-compatible image generation or image editing endpoints.
 
 Disable streaming:
 
@@ -214,7 +228,7 @@ llmrun --file report.pdf "Summarize the action items"
 llmrun --image https://example.com/screenshot.png "What is visible here?"
 ```
 
-Local attachments are sent as base64 data URLs. HTTPS URLs are passed through without reading local files. Session transcripts store attachment metadata only, not base64 payloads. OpenAI API-key auth and Codex OAuth auth both send attachments as structured Responses input; Codex OAuth support depends on the Codex backend accepting that payload shape for the selected model/account. For OpenAI-compatible `--base-url` providers that do not support Responses multimodal input, image prompts fall back to Chat Completions vision format. Local PDFs also fall back by rendering pages as images for vision-capable models; remote PDF URLs still require a provider that supports Responses `input_file`.
+Local attachments are sent as base64 data URLs. HTTPS URLs are passed through without reading local files. Session transcripts store attachment metadata only, not base64 payloads. OpenAI API-key auth and Codex OAuth auth both send attachments as structured Responses input; Codex OAuth support depends on the Codex backend accepting that payload shape for the selected model/account. For OpenAI-compatible `--base-url` providers that do not support Responses multimodal input, image prompts fall back to Chat Completions vision format. Local PDFs also fall back by rendering pages as images for vision-capable models when the `pdf` extra is installed; remote PDF URLs still require a provider that supports Responses `input_file`.
 
 ## Multimodal Commands
 
@@ -414,14 +428,16 @@ Model selection order is:
 1. `--model`
 2. existing session model
 3. `config default_model`
-4. built-in default, `gpt-5.4-mini`
+4. provider preset default model, when a known provider base URL is selected
+5. built-in default, `gpt-5.4-mini`
 
 Base URL selection order is:
 
 1. `--base-url`
-2. `config base_url`
-3. `LLMRUN_BASE_URL`
-4. OpenAI SDK default
+2. provider preset base URL from `--provider`
+3. `config base_url`
+4. `LLMRUN_BASE_URL`
+5. OpenAI SDK default
 
 ## Common Options
 
@@ -440,11 +456,69 @@ These options apply to root prompts:
 | `--image-detail auto\|low\|high` | Detail level for attached images. `auto` lets the provider choose, `low` uses less visual detail, and `high` requests more detailed image analysis. Defaults to `auto`. |
 | `-t, --temperature FLOAT` | Sampling temperature passed to the provider. |
 | `--max-output-tokens INTEGER` | Maximum output tokens passed when supported. The Codex OAuth backend currently rejects this field, so that adapter strips it. |
-| `--reasoning-effort TEXT` | Reasoning effort value passed as `reasoning.effort`. |
+| `--reasoning-effort TEXT` | Reasoning effort value forwarded to providers/models that support it, including Chat Completions-compatible providers when applicable. |
 | `--stream / --no-stream` | Stream output when supported. Streaming is on by default. |
 | `-j, --json` | Request JSON-object output mode. |
 
 Common subcommand aliases include `-o, --output` for generated file paths, `-m, --model` for model selection, `-i, --image` for image inputs, `-v, --voice` for speech voices, and `-c, --count` for image counts.
+
+## Release Artifacts
+
+PyInstaller is the primary release path for downloadable executables. Build one executable per target platform:
+
+```console
+llmrun release pyinstaller --output dist/llmrun.exe
+```
+
+Include the optional PDF rendering dependency with:
+
+```console
+llmrun release pyinstaller --include-pdf --output dist/llmrun.exe
+```
+
+The `Release artifacts` GitHub Actions workflow builds, smoke-tests, and packages PyInstaller executables separately on each runner. The final downloadable package names are:
+
+```text
+llmrun-windows-x64.zip
+llmrun-linux-x64.tar.gz
+llmrun-linux-arm64.tar.gz
+llmrun-macos-x64.tar.gz
+llmrun-macos-arm64.tar.gz
+```
+
+Linux binaries are built on Ubuntu 22.04 for a broader glibc compatibility baseline. macOS binaries are currently unsigned and not notarized, so Gatekeeper or quarantine prompts may appear on first run.
+
+Manual workflow runs produce GitHub Actions workflow artifacts only. Pushing a `v*` tag publishes the packaged files as durable assets on the matching GitHub Release.
+
+PEX scie is kept as a secondary executable release path. Build a PEX scie executable for the current platform:
+
+```console
+llmrun release scie --output dist/llmrun.exe
+```
+
+The scie artifact embeds a Python runtime and is intended for one-file-per-platform distribution. It is kept as a secondary release path because PEX scie can require link or symlink privileges on Windows. Include the optional PDF rendering dependency with:
+
+```console
+llmrun release scie --include-pdf --output dist/llmrun.exe
+```
+
+The `.pyz` zipapp is also a secondary artifact. Build a single-file Python zipapp from a source checkout:
+
+```console
+llmrun release pyz --output dist/llmrun.pyz
+```
+
+The zipapp bundles the core runtime dependencies and leaves local PDF rendering out by default. Include the optional PDF rendering dependency with:
+
+```console
+llmrun release pyz --include-pdf --output dist/llmrun.pyz
+```
+
+Run the artifact with Python 3.11 or newer:
+
+```console
+python dist/llmrun.pyz --help
+```
 
 ## State Files
 

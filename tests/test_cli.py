@@ -393,6 +393,60 @@ def test_cli_groq_base_url_uses_groq_default_model(monkeypatch, tmp_path):
     result = runner.invoke(app, ["hello"])
 
     assert result.exit_code == 0
+    assert seen == ["openai/gpt-oss-120b"]
+
+
+def test_cli_groq_base_url_uses_groq_vision_default_for_image(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "gsk-test")
+    monkeypatch.setenv("LLMRUN_BASE_URL", "https://api.groq.com/openai/v1")
+    image = tmp_path / "receipt.png"
+    image.write_bytes(b"png")
+    seen = []
+
+    class FakeProvider:
+        name = "openai"
+
+        def complete(self, request, on_delta=None):
+            seen.append(request.model)
+            return type("Result", (), {"text": "ok", "response_id": "resp_1"})()
+
+    monkeypatch.setattr(
+        "llmrun.cli.make_provider", lambda auth, base_url=None: FakeProvider()
+    )
+
+    result = runner.invoke(app, ["--image", str(image), "extract text"])
+
+    assert result.exit_code == 0
+    assert seen == ["meta-llama/llama-4-scout-17b-16e-instruct"]
+
+
+def test_cli_groq_base_url_uses_groq_vision_default_for_local_pdf(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("LLMRUN_STATE_DIR", str(tmp_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "gsk-test")
+    monkeypatch.setenv("LLMRUN_BASE_URL", "https://api.groq.com/openai/v1")
+    pdf = tmp_path / "report.pdf"
+    pdf.write_bytes(b"%PDF")
+    seen = []
+
+    class FakeProvider:
+        name = "openai"
+
+        def complete(self, request, on_delta=None):
+            seen.append(request.model)
+            return type("Result", (), {"text": "ok", "response_id": "resp_1"})()
+
+    monkeypatch.setattr(
+        "llmrun.cli.make_provider", lambda auth, base_url=None: FakeProvider()
+    )
+
+    result = runner.invoke(app, ["--file", str(pdf), "summarize"])
+
+    assert result.exit_code == 0
     assert seen == ["meta-llama/llama-4-scout-17b-16e-instruct"]
 
 
@@ -420,7 +474,7 @@ def test_cli_provider_groq_sets_base_url_and_default_model(monkeypatch, tmp_path
 
     assert result.exit_code == 0
     assert seen == [
-        ("meta-llama/llama-4-scout-17b-16e-instruct", "https://api.groq.com/openai/v1")
+        ("openai/gpt-oss-120b", "https://api.groq.com/openai/v1")
     ]
 
 

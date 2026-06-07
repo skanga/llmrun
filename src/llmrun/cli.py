@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import click
@@ -31,6 +32,11 @@ from .runners import (
     session_replay_input,
     should_replay_session,
     timestamped_output,
+)
+from .release import (
+    build_pyinstaller_release,
+    build_scie_release,
+    build_zipapp_release,
 )
 from .state import StateStore
 
@@ -270,6 +276,156 @@ def sessions_export(name: str, format_: str) -> None:
         click.echo(StateStore().export_session(name, format_), nl=False)
     except (KeyError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@app.group(help="Build single-file release artifacts.")
+def release() -> None:
+    pass
+
+
+@release.command("pyz", help="Build a Python zipapp release artifact.")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("dist") / "llmrun.pyz",
+    show_default=True,
+    help="Output .pyz path.",
+)
+@click.option(
+    "--source",
+    type=click.Path(file_okay=False, exists=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project source directory to package.",
+)
+@click.option(
+    "--include-pdf/--no-include-pdf",
+    default=False,
+    show_default=True,
+    help="Bundle the optional PyMuPDF PDF rendering dependency.",
+)
+@click.option(
+    "--python",
+    "python_executable",
+    help="Python executable used to install dependencies into the zipapp.",
+)
+def release_pyz(
+    output: Path,
+    source: Path,
+    include_pdf: bool,
+    python_executable: str | None,
+) -> None:
+    try:
+        artifact = build_zipapp_release(
+            output_path=output,
+            source_dir=source,
+            include_pdf=include_pdf,
+            python_executable=python_executable,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(str(artifact))
+
+
+@release.command("scie", help="Build a PEX scie single-file executable.")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("dist") / "llmrun.exe",
+    show_default=True,
+    help="Output executable path.",
+)
+@click.option(
+    "--source",
+    type=click.Path(file_okay=False, exists=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project source directory to package.",
+)
+@click.option(
+    "--include-pdf/--no-include-pdf",
+    default=False,
+    show_default=True,
+    help="Bundle the optional PyMuPDF PDF rendering dependency.",
+)
+@click.option(
+    "--scie",
+    "scie_mode",
+    type=click.Choice(["eager", "lazy"]),
+    default="eager",
+    show_default=True,
+    help="Embed Python eagerly, or fetch/cache it lazily at first run.",
+)
+@click.option(
+    "--python",
+    "python_executable",
+    help="Python executable used to run PEX.",
+)
+def release_scie(
+    output: Path,
+    source: Path,
+    include_pdf: bool,
+    scie_mode: str,
+    python_executable: str | None,
+) -> None:
+    try:
+        artifact = build_scie_release(
+            output_path=output,
+            source_dir=source,
+            include_pdf=include_pdf,
+            scie_mode=scie_mode,
+            python_executable=python_executable,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(str(artifact))
+
+
+@release.command("pyinstaller", help="Build a PyInstaller one-file executable.")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("dist") / "llmrun.exe",
+    show_default=True,
+    help="Output executable path.",
+)
+@click.option(
+    "--source",
+    type=click.Path(file_okay=False, exists=True, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Project source directory to package.",
+)
+@click.option(
+    "--include-pdf/--no-include-pdf",
+    default=False,
+    show_default=True,
+    help="Bundle the optional PyMuPDF PDF rendering dependency.",
+)
+@click.option(
+    "--python",
+    "python_executable",
+    help="Python executable used to run PyInstaller.",
+)
+def release_pyinstaller(
+    output: Path,
+    source: Path,
+    include_pdf: bool,
+    python_executable: str | None,
+) -> None:
+    try:
+        artifact = build_pyinstaller_release(
+            output_path=output,
+            source_dir=source,
+            include_pdf=include_pdf,
+            python_executable=python_executable,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(str(artifact))
 
 
 @app.group(help="Manage reusable prompt templates.")

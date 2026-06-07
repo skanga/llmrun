@@ -627,8 +627,14 @@ def _chat_text_fallback_supported(request: ProviderRequest) -> bool:
 
 def _responses_unsupported_for_fallback(exc: Exception) -> bool:
     status_code = _exception_status_code(exc)
-    if status_code in {400, 404, 405, 422}:
+    if status_code in {404, 405}:
         return True
+    if status_code in {400, 422}:
+        return _message_indicates_responses_unsupported(exc)
+    return _message_indicates_responses_unsupported(exc)
+
+
+def _message_indicates_responses_unsupported(exc: Exception) -> bool:
     message = _safe_exception_message(exc).lower()
     unsupported_markers = (
         "responses api",
@@ -642,6 +648,12 @@ def _responses_unsupported_for_fallback(exc: Exception) -> bool:
         "not support responses",
         "does not support responses",
         "responses is not supported",
+        "unsupported input format",
+        "unsupported input-format",
+        "input format is not supported",
+        "input-format is not supported",
+        "invalid input format",
+        "invalid input-format",
     )
     failure_markers = (
         "unsupported",
@@ -700,7 +712,7 @@ def _pdf_page_attachments(attachment: Attachment) -> list[Attachment]:
         import fitz  # type: ignore[import-untyped]
     except ImportError as exc:
         raise ProviderError(
-            "PDF vision fallback requires PyMuPDF. Install the package with llmrun dependencies."
+            "PDF vision fallback requires PyMuPDF. Install it with the llmrun[pdf] extra."
         ) from exc
 
     pages: list[Attachment] = []
@@ -733,7 +745,10 @@ def _chat_completion_kwargs(request: ProviderRequest) -> dict[str, Any]:
     messages: list[dict[str, Any]] = []
     if request.instructions:
         messages.append({"role": "system", "content": request.instructions})
-    messages.append({"role": "user", "content": _chat_content_items(request)})
+    user_content: str | list[dict[str, Any]] = request.input_text
+    if request.attachments:
+        user_content = _chat_content_items(request)
+    messages.append({"role": "user", "content": user_content})
     kwargs: dict[str, Any] = {
         "model": request.model,
         "messages": messages,
@@ -743,6 +758,8 @@ def _chat_completion_kwargs(request: ProviderRequest) -> dict[str, Any]:
         kwargs["temperature"] = request.temperature
     if request.max_output_tokens is not None:
         kwargs["max_tokens"] = request.max_output_tokens
+    if request.reasoning_effort:
+        kwargs["reasoning_effort"] = request.reasoning_effort
     if request.json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     return kwargs
@@ -819,17 +836,34 @@ def _consume_chat_stream(
     parts: list[str] = []
     response_id: str | None = None
     for event in events:
-        response_id = response_id or getattr(event, "id", None)
-        choices = getattr(event, "choices", None)
+        event_id = _field(event, "id")
+        if response_id is None and isinstance(event_id, str):
+            response_id = event_id
+        choices = _field(event, "choices")
         if not choices:
             continue
-        delta = getattr(choices[0], "delta", None)
-        content = getattr(delta, "content", None)
+        choice = choices[0]
+        delta = _field(choice, "delta")
+        content = _field(delta, "content")
+        if not isinstance(content, str):
+            message = _field(choice, "message")
+            content = _field(message, "content")
         if isinstance(content, str) and content:
             parts.append(content)
             if on_delta:
                 on_delta(content)
-    return ProviderResult(text="".join(parts), response_id=response_id)
+    text = "".join(parts)
+    if not text:
+        raise ProviderError(
+            "OpenAI-compatible chat completions stream returned no text."
+        )
+    return ProviderResult(text=text, response_id=response_id)
+
+
+def _field(value: Any, name: str) -> Any:
+    if isinstance(value, dict):
+        return value.get(name)
+    return getattr(value, name, None)
 
 
 def _consume_sse_text(
