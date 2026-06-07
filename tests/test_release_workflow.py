@@ -20,14 +20,13 @@ def test_release_artifact_workflow_builds_pyinstaller_matrix():
     ):
         assert f"os: {runner}" in text
 
-    for executable in (
-        "llmrun-windows-x64.exe",
-        "llmrun-linux-x64",
-        "llmrun-linux-arm64",
-        "llmrun-macos-x64",
-        "llmrun-macos-arm64",
-    ):
-        assert executable in text
+    assert "executable: llmrun.exe" in text
+    assert text.count("executable: llmrun\n") == 4
+    assert "executable: llmrun-windows-x64.exe" not in text
+    assert "executable: llmrun-linux-x64" not in text
+    assert "executable: llmrun-linux-arm64" not in text
+    assert "executable: llmrun-macos-x64" not in text
+    assert "executable: llmrun-macos-arm64" not in text
 
     for package in (
         "llmrun-windows-x64.zip",

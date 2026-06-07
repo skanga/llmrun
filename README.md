@@ -486,6 +486,8 @@ llmrun-macos-x64.tar.gz
 llmrun-macos-arm64.tar.gz
 ```
 
+The Windows zip contains `llmrun.exe`. The Linux and macOS tarballs contain `llmrun`, preserving the command name across platforms.
+
 Linux binaries are built on Ubuntu 22.04 for a broader glibc compatibility baseline. macOS binaries are currently unsigned and not notarized, so Gatekeeper or quarantine prompts may appear on first run.
 
 Manual workflow runs produce GitHub Actions workflow artifacts only. Pushing a `v*` tag publishes the packaged files as durable assets on the matching GitHub Release.
